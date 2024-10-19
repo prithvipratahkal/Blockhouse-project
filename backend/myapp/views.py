@@ -42,13 +42,13 @@ def back_test(request):
         if buy and stock.open_price < stock.buying_moving_average:
             stocks_held = int(amount_remaining) // stock.open_price
             amount_remaining = int(amount_remaining) % stock.open_price
-            buy = False
             events.append(f"Bought {stocks_held} stocks on {stock.time} for {stock.open_price}")
+            buy = False
         elif not buy and stock.close_price > stock.selling_moving_average:
             amount_remaining += int(stocks_held * stock.close_price)
+            events.append(f"Sold {stocks_held} stocks on {stock.time} for {stock.close_price}")
             stocks_held = 0
             buy = True
-            events.append(f"Sold {stocks_held} stocks on {stock.time} for {stock.close_price}")
 
     if stocks_held > 0:
         # sell the stocks at the last price
