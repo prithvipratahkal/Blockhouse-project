@@ -21,8 +21,7 @@ def get_stock_data():
     }
 
     response = requests.get(url, params=params)
-    logging.info(f"Alpha vantage api response status code: {
-                 response.status_code}")
+    logging.info(f"Alpha vantage api response status code: {response.status_code}")
 
     if response.status_code == 200:
         data = response.json()
@@ -33,6 +32,14 @@ def get_stock_data():
 
 def get_db_connection():
     logging.info("Establishing database connection")
+
+    user = os.getenv('POSTGRES_USER')
+    password = os.getenv('POSTGRES_PASSWORD')
+    host = os.getenv('POSTGRES_HOST')
+    port = os.getenv('POSTGRES_PORT')
+    database = os.getenv('POSTGRES_DB')
+
+    logging.info(f"User: {user}, Password: {password}, Host: {host}, Port: {port}, Database: {database}")
 
     connection = pg8000.connect(
         user=os.getenv('POSTGRES_USER'),
@@ -47,44 +54,56 @@ def get_db_connection():
 
 
 def backfill_two_years_data():
-    data = get_stock_data('AAPL', START_DATE)
+    try:
+        data = get_stock_data()
 
-    # if no data is returned, exit the function
-    if data is None:
-        return
+        # if no data is returned, exit the function
+        if data is None:
+            return
 
-    # now we have the data, iterate over the data and insert it into the database
-    daily_data = data.get('Time Series (Daily)', {})
+        # now we have the data, iterate over the data and insert it into the database
+        daily_data = data.get('Time Series (Daily)', {})
 
-    # filter all the data that is after the start date
-    data_since_start_date = {}
-    for date, values in daily_data.items():
-        if date >= START_DATE:
-            data_since_start_date[date] = values
+        logging.info(f'Trying to insert all data {data}')
 
-    # iterate over the data and insert it into the database
-    cursor = db_conn.cursor()
-    db_conn = get_db_connection()
+        # filter all the data that is after the start date
+        data_since_start_date = {}
+        for date, values in daily_data.items():
+            if date >= START_DATE:
+                data_since_start_date[date] = values
 
-    # prepare the insert query
-    insert_query = '''
-        INSERT INTO aapl_stock_data (time, open_price, close_price, high_price, low_price, volume)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    '''
+        # iterate over the data and insert it into the database
+        db_conn = get_db_connection()
+        cursor = db_conn.cursor()
 
-    for date, values in data_since_start_date.items():
-        # extract the required fields
-        open_price = float(values.get('1. open', 0))
-        high_price = float(values.get('2. high', 0))
-        low_price = float(values.get('3. low', 0))
-        close_price = float(values.get('4. close', 0))
-        volume = int(values.get('5. volume', 0))
+        # prepare the insert query
+        insert_query = '''
+            INSERT INTO aapl_stock_data (time, open_price, close_price, high_price, low_price, volume)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        '''
 
-        # insert the data into the table
-        cursor.execute(insert_query, (date, open_price,
-                       close_price, high_price, low_price, volume))
-        logging.info(f"Inserted data for date: {date}, open_price: {open_price}, close_price: 
-                     {close_price}, high_price: {high_price}, low_price: {low_price}, volume: {volume}")
+        for date, values in data_since_start_date.items():
+            # extract the required fields
+            open_price = float(values.get('1. open', 0))
+            high_price = float(values.get('2. high', 0))
+            low_price = float(values.get('3. low', 0))
+            close_price = float(values.get('4. close', 0))
+            volume = int(values.get('5. volume', 0))
+
+            # insert the data into the table
+            cursor.execute(insert_query, (date, open_price,
+                        close_price, high_price, low_price, volume))
+            logging.info(f"Inserted data for date: {date}, open_price: {open_price}, close_price: {close_price}, high_price: {high_price}, low_price: {low_price}, volume: {volume}")
+
+        # Commit the transaction to save the data
+        db_conn.commit()
+    except Exception as e:
+        logging.error(f"Failed to insert data for date: {date} with error: {e}")
+    finally:
+        # Close the cursor and connection
+        if cursor is not None:
+            cursor.close()
+        print("PostgreSQL connection closed.")
 
 
 if __name__ == '__main__':
