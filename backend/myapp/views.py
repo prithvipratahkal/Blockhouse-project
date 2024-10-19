@@ -10,6 +10,9 @@ from django.http import JsonResponse, HttpResponse
 import matplotlib.pyplot as plt
 import io
 
+# Set the Matplotlib backend to 'Agg'
+import matplotlib
+matplotlib.use('Agg')
 
 # Create your views here.
 
@@ -115,17 +118,17 @@ def get_report_for_prediction(request):
     
     model = joblib.load(get_linear_regression_model_filepath())
     
-    # get the latest stock data
+    # Get the latest stock data
     latest_stock_data = AaplStockData.objects.all().order_by('-time').values('close_price', 'time')
     data_df = pd.DataFrame(list(latest_stock_data))
 
-    # prepare the data for the model
+    # Prepare the data for the model
     X_input = data_df['close_price'].values.reshape(-1, 1)
 
-    # predict the stock data for the last 30 days
+    # Predict the stock data for the last 30 days
     predictions = model.predict(X_input[-30:])
 
-    # generate data for the next 30 days
+    # Generate dates for the next 30 days
     last_date = data_df['time'].max()
     prediction_dates = [last_date + timedelta(days=i) for i in range(1, 31)]
 
