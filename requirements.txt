@@ -6,3 +6,4 @@ pandas
 apscheduler
 djangorestframework
 sklearn
+matplotlib

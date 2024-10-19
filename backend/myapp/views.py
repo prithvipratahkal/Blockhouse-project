@@ -6,7 +6,9 @@ from myapp.apps import get_linear_regression_model_filepath
 import joblib
 import pandas as pd
 from datetime import timedelta
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+import matplotlib.pyplot as plt
+import io
 
 
 # Create your views here.
@@ -104,3 +106,49 @@ def predict_data(request):
     }
 
     return JsonResponse(prediction_response)
+
+@api_view(['GET'])
+def get_report_for_prediction(request):
+    """
+    This function is used to get the report for the prediction
+    """
+    
+    model = joblib.load(get_linear_regression_model_filepath())
+    
+    # get the latest stock data
+    latest_stock_data = AaplStockData.objects.all().order_by('-time').values('close_price', 'time')
+    data_df = pd.DataFrame(list(latest_stock_data))
+
+    # prepare the data for the model
+    X_input = data_df['close_price'].values.reshape(-1, 1)
+
+    # predict the stock data for the last 30 days
+    predictions = model.predict(X_input[-30:])
+
+    # generate data for the next 30 days
+    last_date = data_df['time'].max()
+    prediction_dates = [last_date + timedelta(days=i) for i in range(1, 31)]
+
+    # Convert 'time' column to datetime if not already
+    data_df['time'] = pd.to_datetime(data_df['time'])
+    
+    # Create a plot comparing actual vs predicted stock prices
+    plt.figure(figsize=(10, 6))
+    plt.plot(data_df['time'][-30:], X_input[-30:], label='Actual Price', color='blue')
+    plt.plot(prediction_dates, predictions, label='Predicted Price', color='green')
+    plt.xlabel('Date')
+    plt.ylabel('Stock Price')
+    plt.title('Actual vs Predicted Stock Prices')
+    plt.legend()
+
+    # Save the plot to a bytes buffer
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+
+    # Return the image as an HTTP response
+    response = HttpResponse(buf, content_type='image/png')
+    response['Content-Disposition'] = 'inline; filename="stock_predictions.png"'
+
+    return response
+    
