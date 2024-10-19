@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from myapp.models import AaplStockData
 import os
@@ -61,6 +61,7 @@ def get_stock_data(since_time: datetime):
         daily_data = data.get('Time Series (Daily)', {})
         data_since_given_time = {}
         for time, stock_data in daily_data.items():
+            time = datetime.strptime(time, "%Y-%m-%d").replace(tzinfo=timezone.utc)
             if time > since_time:
                 data_since_given_time[time] = stock_data
         

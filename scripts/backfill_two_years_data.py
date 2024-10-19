@@ -54,6 +54,10 @@ def get_db_connection():
 
 
 def backfill_two_years_data():
+    # iterate over the data and insert it into the database
+    db_conn = get_db_connection()
+    cursor = db_conn.cursor()
+
     try:
         data = get_stock_data()
 
@@ -72,9 +76,6 @@ def backfill_two_years_data():
             if date >= START_DATE:
                 data_since_start_date[date] = values
 
-        # iterate over the data and insert it into the database
-        db_conn = get_db_connection()
-        cursor = db_conn.cursor()
 
         # prepare the insert query
         insert_query = '''
@@ -98,11 +99,10 @@ def backfill_two_years_data():
         # Commit the transaction to save the data
         db_conn.commit()
     except Exception as e:
-        logging.error(f"Failed to insert data for date: {date} with error: {e}")
+        logging.error(f"Failed to insert data with error: {e}")
     finally:
         # Close the cursor and connection
-        if cursor is not None:
-            cursor.close()
+        cursor.close()
         print("PostgreSQL connection closed.")
 
 
