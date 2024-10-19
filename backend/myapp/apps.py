@@ -6,5 +6,5 @@ class MyappConfig(AppConfig):
     name = 'myapp'
     
     def ready(self):
-        from myapp import scheduler
-        scheduler.start()
+        from myapp import background_task
+        background_task.start()

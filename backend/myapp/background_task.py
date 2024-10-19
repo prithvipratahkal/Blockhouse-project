@@ -1,5 +1,5 @@
 from apscheduler.schedulers.background import BackgroundScheduler
-from myapp import your_scheduled_task
+from myapp.tasks import your_scheduled_task
 import logging
 
 def start():
