@@ -1,8 +1,14 @@
 from datetime import datetime, timezone
 import logging
 from myapp.models import AaplStockData
+from myapp.apps import get_linear_regression_model_filepath
 import os
 import requests
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+import joblib
+
 
 def update_latest_stock_data():
     logging.info(f"Updating latest stock data running at {datetime.now()}")
@@ -69,3 +75,25 @@ def get_stock_data(since_time: datetime):
 
     logging.info(f'Error fetching data from Alpha vantage api. Response status code: {response.status_code}')
     return None
+
+def train_linear_regression_model():
+    # get all the stock data
+    all_stock_data = AaplStockData.objects.all()
+    data_df = pd.DataFrame(list(all_stock_data.values('time', 'close_price')))
+    
+    # preprocess the data
+    data_df['previous_day'] = data_df['close_price'].shift(1)
+    data_df.dropna(inplace=True)
+    
+    # define features (X) and target (Y)
+    X = data_df[['previous_day']].values
+    Y = data_df['close_price'].values
+    
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=False)
+
+    # Initialize and train the Linear Regression model
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    
+    joblib.dump(model, get_linear_regression_model_filepath())
