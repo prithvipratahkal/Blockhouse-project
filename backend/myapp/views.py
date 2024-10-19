@@ -23,8 +23,8 @@ def back_test(request):
     if not investing_amount.isnumeric() or not sell_period.isnumeric() or not buy_period.isnumeric():
         return Response(status=status.HTTP_400_BAD_REQUEST)
     
-    # if any of the parameters are less than 0, return a bad request response
-    if int(investing_amount) < 0 or int(sell_period) < 0 or int(buy_period) < 0:
+    # if any of the parameters are less than or equal to 0, return a bad request response
+    if int(investing_amount) <= 0 or int(sell_period) <= 0 or int(buy_period) <= 0:
         return Response(status=status.HTTP_400_BAD_REQUEST)
     
     stock_data = AaplStockData.get_data_with_moving_average(int(sell_period), int(buy_period))
