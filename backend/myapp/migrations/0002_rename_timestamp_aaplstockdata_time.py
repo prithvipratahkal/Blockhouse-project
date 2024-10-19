@@ -2,6 +2,14 @@
 
 from django.db import migrations, models
 from django.db import connection
+import sys
+from django.db import migrations
+
+def create_hypertable(apps, schema_editor):
+    from django.db import connection
+    if 'test' not in sys.argv:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT create_hypertable('aapl_stock_data', 'time');")
 
 class Migration(migrations.Migration):
 
@@ -15,13 +23,5 @@ class Migration(migrations.Migration):
             old_name='timestamp',
             new_name='time',
         ),
-        
-        migrations.RunSQL(
-            """
-            SELECT create_hypertable('aapl_stock_data', 'time');
-            """,
-            reverse_sql="""
-            DROP TABLE IF EXISTS aapl_stock_data CASCADE;
-            """,
-        ),
+        migrations.RunPython(create_hypertable),
     ]
