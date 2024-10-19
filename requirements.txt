@@ -1,4 +1,5 @@
 django
 pg8000
+psycopg2
 requests
 pandas
