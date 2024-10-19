@@ -37,20 +37,28 @@ def back_test(request):
     buy = True
     amount_remaining = int(investing_amount)
     stocks_held = 0
+    events = []
     for stock in stock_data:
         if buy and stock.open_price < stock.buying_moving_average:
             stocks_held = int(amount_remaining) // stock.open_price
             amount_remaining = int(amount_remaining) % stock.open_price
             buy = False
+            events.append(f"Bought {stocks_held} stocks on {stock.time} for {stock.open_price}")
         elif not buy and stock.close_price > stock.selling_moving_average:
             amount_remaining += int(stocks_held * stock.close_price)
             stocks_held = 0
             buy = True
-    
+            events.append(f"Sold {stocks_held} stocks on {stock.time} for {stock.close_price}")
+
     if stocks_held > 0:
         # sell the stocks at the last price
         amount_remaining += int(stocks_held * stock_data[-1].close_price)
-    
-    # return the profit
+        events.append(f"Sold {stocks_held} stocks on {stock_data[-1].time} for {stock_data[-1].close_price}")
+        
     profit = amount_remaining - int(investing_amount)
-    return Response(status=status.HTTP_200_OK, data={'profit': profit})
+    response_data = {
+        'profit': profit,
+        'events': events
+    }    
+
+    return Response(status=status.HTTP_200_OK, data=response_data)
