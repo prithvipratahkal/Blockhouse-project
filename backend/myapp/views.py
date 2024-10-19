@@ -87,7 +87,7 @@ def predict_data(request):
     model = joblib.load(get_linear_regression_model_filepath())
 
     # get the latest stock data
-    latest_stock_data = AaplStockData.objects.all().order_by('-time')
+    latest_stock_data = AaplStockData.objects.all().order_by('-time').values('close_price', 'time')
     data_df = pd.DataFrame(latest_stock_data)
 
     # prepare the data for the model
