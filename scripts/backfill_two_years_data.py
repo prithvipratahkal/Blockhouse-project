@@ -83,6 +83,8 @@ def backfill_two_years_data():
         # insert the data into the table
         cursor.execute(insert_query, (date, open_price,
                        close_price, high_price, low_price, volume))
+        logging.info(f"Inserted data for date: {date}, open_price: {open_price}, close_price: 
+                     {close_price}, high_price: {high_price}, low_price: {low_price}, volume: {volume}")
 
 
 if __name__ == '__main__':
