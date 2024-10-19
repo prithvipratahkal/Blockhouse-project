@@ -8,6 +8,29 @@ The goal is to create a straightforward, user-friendly system that focuses on th
 - Providing a basic tool for backtesting investment strategies.
 - Offering stock price predictions using an existing machine learning model.
 
+## Deliverables achieved
+1. Fetch Financial Data
+   - I am able to get the data related to the stock symbol and store the data in the postgresql database.
+   - Installed timescale plugin for postgres as the data is timeseries and it would be easier on the database to do time queries.
+   - Implemented a one time backfill script that has to be run for the environment setup which fetches all the stock data from past 2 years and write it to the stock data table.
+   - Implemented a daily cron job that fetches the latest stock data of AAPL from the alphavantage and stores it in the db. This ensures that the data is always up to date on a daily basis
+2. Backtesting Module
+   - Implemented a new rest api endpoint at '/api/backtest' which takes the parameters such as investing_amount, buy_period, sell_period as mentioned in the requirement document.
+   - This API queries the timeseries database and gets the required metrics for us such as moving average for every day since the past 2 years.
+   - Implemented a core business logic to use the above metrics and the parameters provided by the user to calculate the total profit and list of events that could have happened with this strategy mentioned in the requirement document.
+   - Added necessary test cases to test this endpoint thoroughly ensuring various scenarios are well tested.
+3. Machine Learning Integration
+   - Since the ML part of the project is irrelavant to this project setup, I have chosen to train the most basic linear regression model without worrying about the accuracy.
+   - Created a background task using the Django framework which will run the task every day at 1AM which is right after fetching the latest stock data. This task will retrain the model and generate a new `.pkl` file based on the newly available data.
+   - Implemented a new rest api endpoint which will trigger the predictions of the stock data for the next 30 days and includes that in the reponse of the API.
+4. Report Generation
+   - Implemented a new api endpoint which generates a HTTP response that includes the visualization of how the last 30 days of stock price and next 30 days of predicted data alongside.
+   - Generated the reports using the Matplotlib.
+5. Deployment
+   - Implemented docker files which are required to dockerise the application and deploy it on any container environment.
+   - Due to time constraint, it was not possible to move forward with deploying the code on AWS, setting up CI/CD pipelines.
+   - Including the detailed explanation on how to build, start, run and test the application and its endpoints.
+
 ## Installation
 
 To set up the project locally, follow these steps:
@@ -62,6 +85,8 @@ To set up the project locally, follow these steps:
    ```
 
 ## Setting up PostgreSQL in Docker
+
+Note: Due to time constraints, I was not able to setup PostgreSQL in AWS, so I have done that locally using docker.
 
 To set up a PostgreSQL instance using Docker, follow these steps:
 
@@ -359,33 +384,67 @@ INFO:root:PostgreSQL connection closed.
 This logging helps track the progress of data backfilling and provides useful information for debugging in case of any issues.
 
 
-### Background Task: Daily Stock Data Update and Model Training
 
-This background task is scheduled to run daily at midnight to update the stock data for the day and ensure that any missing data from previous days is backfilled. The task is implemented using the `apscheduler` library, which handles job scheduling in a Django-based environment.
+### Background Task: Daily Stock Data Update and Model Retraining
 
-#### Overview:
+This project includes two automatic tasks that run every day to ensure stock data is always up-to-date and the stock price prediction model is regularly retrained. These tasks run in the background and are scheduled to execute at specific times.
 
-1. **Scheduler Initialization**:
-   - The scheduler is initialized using `apscheduler.schedulers.background.BackgroundScheduler()`, which allows for jobs to run in the background without blocking other tasks.
-   - Two main jobs are scheduled:
-     - A daily task that updates the stock data at midnight.
-     - A one-time task that trains a linear regression model at a specified time.
+#### Daily Tasks:
 
-2. **Daily Stock Data Update**:
-   - The task `update_latest_stock_data` is scheduled to run every day at **midnight (00:00)**. This task:
-     - Fetches the stock data for the current day using the Alpha Vantage API.
-     - Adds the new data to the database.
-     - If there are any missing entries from previous days (e.g., due to server downtime), it backfills the database with the missing data.
-   - This ensures that the stock data is always up-to-date, and any gaps in data collection are addressed automatically.
+1. **Stock Data Fetching (Runs at Midnight)**:
+   - Every day at **midnight (00:00)**, the system fetches the latest stock data for Apple Inc. (AAPL) from the Alpha Vantage API.
+   - The fetched data includes details like open price, close price, high price, low price, and volume for the day.
+   - If there are any missing entries from previous days (due to server downtime or other issues), the system backfills the data for those missing days.
+   - This ensures that the database is always complete with no missing stock data.
 
-3. **Model Training**:
-   - The task `train_linear_regression_model` is scheduled as a one-time job that runs at a specific time (`2024-10-19 09:56:00` in this case).
-   - This task retrains the linear regression model on the latest stock data to ensure the model is using the most accurate information for future predictions.
+2. **Model Retraining (Runs at 1 AM)**:
+   - Every day at **1:00 AM**, the system retrains the stock price prediction model using the most up-to-date data.
+   - The model is a **Linear Regression** model, which predicts future stock prices based on the previous day’s closing price.
+   - After training, the model is saved as a `.pkl` file so it can be used later for making predictions.
 
-4. **Logging**:
-   - Logging is enabled to provide visibility into the task execution process. When the scheduler starts, a log entry is generated. Similarly, any issues during task execution are logged for debugging purposes.
+#### How the Tasks Work:
 
-#### Code Explanation:
+1. **Stock Data Update Task**:
+   - The `update_latest_stock_data` function is responsible for fetching and updating the stock data.
+   - It runs every day at midnight and collects the latest stock prices from the Alpha Vantage API.
+   - If any data is missing from previous days, it automatically fills those gaps.
+
+2. **Model Retraining Task**:
+   - The `train_linear_regression_model` function is scheduled to run every day at 1 AM.
+   - This task gathers all the stock data stored in the database and prepares it for model training.
+   - The model is trained using the previous day’s stock price to predict the next day’s price.
+   - After training, the model is saved in a `.pkl` file, which can be loaded whenever stock price predictions are needed.
+
+#### Code Breakdown:
+
+```python
+def train_linear_regression_model():
+    # Get all the stock data
+    all_stock_data = AaplStockData.objects.all()
+    data_df = pd.DataFrame(list(all_stock_data.values('time', 'close_price')))
+    
+    # Preprocess the data
+    data_df['previous_day'] = data_df['close_price'].shift(1)
+    data_df.dropna(inplace=True)
+    
+    # Define features (X) and target (Y)
+    X = data_df[['previous_day']].values
+    Y = data_df['close_price'].values
+    
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=False)
+
+    # Initialize and train the Linear Regression model
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    
+    # Save the model to a file
+    joblib.dump(model, get_linear_regression_model_filepath())
+```
+
+#### Scheduling the Tasks:
+
+The scheduling is handled using the `apscheduler` library. Here’s how the scheduler is set up:
 
 ```python
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -396,40 +455,21 @@ import logging
 def start():
     scheduler = BackgroundScheduler()
     
-    # Specific date and time for the model training task
-    date_string = '2024-10-19 09:56:00'
-    run_date = datetime.strptime(date_string, '%Y-%m-%d %H:%M:%S')
-    
-    # Schedule the daily task to update stock data at midnight
+    # Schedule the daily task to fetch stock data at midnight
     scheduler.add_job(update_latest_stock_data, 'cron', hour=0, minute=0) 
     
-    # Schedule the model training task to run at the specified time
-    scheduler.add_job(train_linear_regression_model, 'date', run_date=run_date) 
+    # Schedule the model retraining task to run at 1 AM
+    scheduler.add_job(train_linear_regression_model, 'cron', hour=1, minute=0)
     
-    # Start the scheduler
     scheduler.start()
     logging.info("Scheduler started")
 ```
 
-#### Job Scheduling:
+#### Summary:
 
-1. **`update_latest_stock_data`**:
-   - Runs every day at midnight (00:00).
-   - Fetches the stock data for the day and adds it to the PostgreSQL database.
-   - Backfills any missing data for previous days that were not updated earlier.
-
-2. **`train_linear_regression_model`**:
-   - Runs once at the specified time (`2024-10-19 09:56:00`).
-   - Retrains the linear regression model on the updated stock data, ensuring that the predictions for future stock prices are based on the most recent data.
-
-#### Example of Scheduler Execution:
-
-- At **midnight (00:00)**, the system automatically triggers the stock data update task. The task will:
-   - Fetch the stock data for the current day.
-   - Identify any missing data for previous days and fill those gaps.
-   - Log each operation for transparency and debugging purposes.
-
-- At the specified time (`2024-10-19 09:56:00`), the model training task runs and updates the linear regression model.
+- **Stock Data Update Task**: Runs every day at midnight to fetch and backfill stock data.
+- **Model Retraining Task**: Runs every day at 1 AM to retrain the stock price prediction model.
+- Both tasks are automated and require no manual intervention after being set up.
 
 #### Logging Example:
 
@@ -437,25 +477,9 @@ def start():
 INFO:root:Scheduler started
 INFO:root:Stock data update task triggered for 2024-10-20
 INFO:root:Stock data updated successfully for 2024-10-20
-INFO:root:Missing data from 2024-10-18 filled successfully
-INFO:root:Linear regression model training started at 2024-10-19 09:56:00
+INFO:root:Linear regression model training started at 2024-10-20 01:00
 INFO:root:Model training completed successfully
 ```
 
-#### Usage:
-
-This task runs automatically in the background once the server starts. To start the scheduler, the following command is executed:
-
-```bash
-python manage.py runserver
-```
-
-Ensure that the appropriate environment variables and dependencies are set up for the scheduler to work correctly.
-
-#### Environment Variables:
-
-- `ALPHA_VANTAGE_API_KEY`: The API key for fetching stock data from Alpha Vantage.
-- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`: PostgreSQL credentials for accessing the database.
-
-This scheduled task ensures that the stock data remains up-to-date and that the machine learning model is trained with the latest information, improving prediction accuracy over time.
+By automating these tasks, the system ensures that stock data is always up-to-date and the model is retrained daily to provide more accurate predictions.
 
