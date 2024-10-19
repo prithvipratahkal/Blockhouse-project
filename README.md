@@ -14,6 +14,16 @@ To set up the project locally, follow these steps:
 
 1) Clone the repository:
     ```
-    git clone <repository-url>
-    cd <project-directory>
+    git clone git@github.com:prithvipratahkal/Blockhouse-project.git
+    cd Blockhouse
     ```
+
+2) Create and activate a virtual environment:
+
+   It's important to use a virtual environment to keep dependencies isolated.
+    For Unix/macOS:
+
+    ```
+    python3 -m venv venv
+    source venv/bin/activate
+```
