@@ -136,9 +136,17 @@ def get_report_for_prediction(request):
     data_df['time'] = pd.to_datetime(data_df['time'])
     
     # Create a plot comparing actual vs predicted stock prices
-    plt.figure(figsize=(10, 6))
-    plt.plot(data_df['time'][-30:], X_input[-30:], label='Actual Price', color='blue')
-    plt.plot(prediction_dates, predictions, label='Predicted Price', color='green')
+    plt.figure(figsize=(12, 6))
+
+    # Plot actual prices
+    plt.plot(data_df['time'][-30:], X_input[-30:], label='Actual Price', color='blue', marker='o')
+
+    # Plot predicted prices
+    plt.plot(prediction_dates, predictions, label='Predicted Price', color='green', linestyle='--', marker='x')
+
+    # Improve x-axis formatting
+    plt.gcf().autofmt_xdate()
+
     plt.xlabel('Date')
     plt.ylabel('Stock Price')
     plt.title('Actual vs Predicted Stock Prices')
