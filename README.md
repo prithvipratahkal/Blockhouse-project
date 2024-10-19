@@ -12,23 +12,6 @@ The goal is to create a straightforward, user-friendly system that focuses on th
 
 To set up the project locally, follow these steps:
 
-<<<<<<< Updated upstream
-1) Clone the repository:
-    ```
-    git clone git@github.com:prithvipratahkal/Blockhouse-project.git
-    cd Blockhouse
-    ```
-
-2) Create and activate a virtual environment:
-
-   It's important to use a virtual environment to keep dependencies isolated.
-    For Unix/macOS:
-
-    ```
-    python3 -m venv venv
-    source venv/bin/activate
-```
-=======
 1. **Clone the repository:**
 
    ```bash
@@ -125,4 +108,38 @@ This section describes the schema used for storing daily stock data for Apple In
 - **volume**: A decimal field capturing the total trading volume for the stock on the recorded day. 
 
 The schema is structured to ensure precise handling of financial data, and it is optimized for querying stock price trends and trading volumes over time. The table is named `aapl_stock_data` in the PostgreSQL database.
->>>>>>> Stashed changes
+
+
+
+## API Endpoint: 
+
+### `/api/backtest/`
+
+This endpoint provides a backtesting feature for evaluating a trading strategy based on moving averages. Users can simulate a simple buy-and-sell strategy by specifying parameters for the initial investment, buy price, and sell price. The system then applies these rules to historical stock data and returns a detailed report of the trades made and the overall profit or loss.
+
+#### HTTP Method: `GET`
+
+#### Query Parameters:
+- `investing_amount` (required): The initial amount to invest in the stock (e.g., 1000).
+- `buy_period` (required): The period for calculating the moving average to decide when to buy (e.g., 50-day average).
+- `sell_period` (required): The period for calculating the moving average to decide when to sell (e.g., 200-day average).
+
+#### Behavior:
+- The endpoint simulates a trading strategy where the user buys stocks when the stock's price dips below a specified moving average and sells when the stock's price rises above a different moving average.
+- If any required parameters are missing or invalid (e.g., not a number, less than zero), the endpoint returns a 400 Bad Request response.
+- The backtesting simulation iterates over historical stock data, tracking when stocks are bought or sold based on the moving average rules.
+- At the end of the simulation, it returns the total profit (or loss) along with a list of trade events that occurred during the backtest.
+
+#### Response:
+- **Status Code**: `200 OK`
+- **Response Body**: 
+  - `profit`: The net profit or loss from the backtest.
+  - `events`: A list of events detailing each trade made, including timestamps and prices.
+
+#### Example Response:
+```json
+{
+    "profit": 500,
+}
+```
+
