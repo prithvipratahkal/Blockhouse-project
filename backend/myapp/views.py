@@ -133,7 +133,7 @@ def get_report_for_prediction(request):
     prediction_dates = [last_date + timedelta(days=i) for i in range(1, 31)]
 
     # Filter the last 30 days of actual data
-    actual_data = data_df[-30:]
+    actual_data = data_df[30:]
 
     # Prepare the plot
     plt.figure(figsize=(12, 6))

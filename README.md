@@ -111,11 +111,11 @@ The schema is structured to ensure precise handling of financial data, and it is
 
 
 
-## API Endpoint: 
+## API Endpoints: 
 
 ### `/api/backtest/`
 
-This endpoint provides a backtesting feature for evaluating a trading strategy based on moving averages. Users can simulate a simple buy-and-sell strategy by specifying parameters for the initial investment, buy price, and sell price. The system then applies these rules to historical stock data and returns a detailed report of the trades made and the overall profit or loss.
+This endpoint provides a backtesting feature for evaluating a trading strategy based on moving averages. Users can simulate a simple buy-and-sell strategy by specifying parameters for the initial investment, buy period, and sell period. The system then applies these rules to historical stock data and returns a detailed report of the trades made and the overall profit or loss.
 
 #### HTTP Method: `GET`
 
@@ -128,13 +128,12 @@ This endpoint provides a backtesting feature for evaluating a trading strategy b
 - The endpoint simulates a trading strategy where the user buys stocks when the stock's price dips below a specified moving average and sells when the stock's price rises above a different moving average.
 - If any required parameters are missing or invalid (e.g., not a number, less than zero), the endpoint returns a 400 Bad Request response.
 - The backtesting simulation iterates over historical stock data, tracking when stocks are bought or sold based on the moving average rules.
-- At the end of the simulation, it returns the total profit (or loss) along with a list of trade events that occurred during the backtest.
+- At the end of the simulation, it returns the total profit (or loss).
 
 #### Response:
 - **Status Code**: `200 OK`
 - **Response Body**: 
   - `profit`: The net profit or loss from the backtest.
-  - `events`: A list of events detailing each trade made, including timestamps and prices.
 
 #### Example Response:
 ```json
@@ -142,4 +141,6 @@ This endpoint provides a backtesting feature for evaluating a trading strategy b
     "profit": 500,
 }
 ```
+
+### 
 
