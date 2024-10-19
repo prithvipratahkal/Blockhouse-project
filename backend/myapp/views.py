@@ -132,16 +132,16 @@ def get_report_for_prediction(request):
     last_date = data_df['time'].max()
     prediction_dates = [last_date + timedelta(days=i) for i in range(1, 31)]
 
-    # Convert 'time' column to datetime if not already
-    data_df['time'] = pd.to_datetime(data_df['time'])
-    
-    # Create a plot comparing actual vs predicted stock prices
+    # Filter the last 30 days of actual data
+    actual_data = data_df[-30:]
+
+    # Prepare the plot
     plt.figure(figsize=(12, 6))
 
-    # Plot actual prices
-    plt.plot(data_df['time'][-30:], X_input[-30:], label='Actual Price', color='blue', marker='o')
+    # Plot actual prices for the last 30 days
+    plt.plot(actual_data['time'], actual_data['close_price'], label='Actual Price', color='blue', marker='o')
 
-    # Plot predicted prices
+    # Plot predicted prices for the next 30 days
     plt.plot(prediction_dates, predictions, label='Predicted Price', color='green', linestyle='--', marker='x')
 
     # Improve x-axis formatting
