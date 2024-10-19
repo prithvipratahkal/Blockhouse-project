@@ -2,6 +2,11 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 from myapp.models import AaplStockData
+from myapp.apps import get_linear_regression_model_filepath
+import joblib
+import pandas as pd
+from datetime import timedelta
+from django.http import JsonResponse
 
 
 # Create your views here.
@@ -69,3 +74,33 @@ def back_test(request):
     }    
 
     return Response(status=status.HTTP_200_OK, data=response_data)
+
+@api_view(['GET'])
+def predict_data(request):
+    """
+    This function is used to predict the stock data for the next 30 days
+    """
+
+    # load the linear regression model
+    model = joblib.load(get_linear_regression_model_filepath())
+
+    # get the latest stock data
+    latest_stock_data = AaplStockData.objects.all().order_by('-time')
+    data_df = pd.DataFrame(latest_stock_data)
+
+    # prepare the data for the model
+    X_input = data_df['close_price'].values.reshape(-1, 1)
+    
+    # predict the stock data
+    predictions = model.predict(X_input[-30:])
+    
+    # generate data for the next 30 days
+    last_date = data_df['time'].max()
+    prediction_dates = [last_date + timedelta(days=i) for i in range(1, 31)]
+    
+    prediction_response = {
+        'symbol': 'AAPL',
+        'predictions': [{'date': date.strftime('%Y-%m-%d'), 'predicted_price': price} for date, price in zip(prediction_dates, predictions)]
+    }
+
+    return JsonResponse(prediction_response)
